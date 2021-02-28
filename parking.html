@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .container {
+            width: 100%;
+            display: flex;
+        }
+
+        .form {
+            width: 20%;
+            margin-right: 100px;
+        }
+
+        .form fieldset {
+            padding-top: 20px;
+        }
+
+        .form input {
+            display: block;
+            margin: 20px 0;
+        }
+
+        input[type=button],
+        button {
+            padding: 7px 12px;
+            border: 1px solid #333;
+            background-color: #333;
+            color: #fff;
+        }
+
+        .car-image {
+            width: 400px;
+        }
+
+        .parking {
+            margin-top: 40px;
+        }
+
+        .parking table {
+            width: 100%;
+            height: 400px;
+            border-collapse: collapse;
+            border: 1px solid black;
+        }
+
+        tr,
+        th {
+            border: 1px solid black;
+        }
+
+        th {
+            width: 25%;
+            height: 200px;
+        }
+
+        .occupied {
+            background-color: rgb(184, 81, 81);
+            color: white;
+        }
+
+        .give-keys {
+            display: none;
+        }
+
+        .give-keys button {
+            margin: 30px 30px;
+        }
+
+        .give-keys img {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+    <title>Parking</title>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="form">
+            <fieldset>
+                <legend>Parking form</legend>
+                <label for="surname">Фамилия владельца</label>
+                <input type="text" name="surname" id="surname" placeholder="Ivanov">
+                <label for="car-number">Номер машины</label>
+                <input type="text" name="car-number" id="car-number" value="kz|123 abc|02">
+                <input type="button" value="Готово" id="submit">
+            </fieldset>
+        </div>
+
+        <div class="car-image">
+            <canvas width="400" height="260" style="border: 1px solid black" id="mycanvas" draggable="true"></canvas>
+        </div>
+
+        <div class="give-keys">
+            <button>Припарковать<img
+                    src="https://www.flaticon.com/svg/vstatic/svg/891/891043.svg?token=exp=1614510102~hmac=fecbcf91cf2b472b0c78186197cb4260"
+                    alt=""></button>
+        </div>
+    </div>
+
+    <div class="parking">
+        <table id="table">
+            <tbody>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script type="text/javascript">
+        let ctx = document.getElementById('mycanvas').getContext('2d');
+        // Массив номеров
+        let arrNumbers = [];
+
+        // Рисует машину и номер
+        function drawCarNumber(number) {
+            // Создаем объект Картинка
+            let car_img = new Image();
+            car_img.onload = function () {
+                // Очистка холста
+                ctx.clearRect(0, 0, mycanvas.width, mycanvas.height);
+                // Рисуем машинку
+                ctx.drawImage(car_img, 15, 0);
+                // Получаем номер машины из формы
+                // Устанавливаем шрифт и его размер
+                ctx.font = "16px Arial";
+                ctx.textAlign = "center";
+                // Рисуем номер поверх картинки
+                ctx.fillText(number, mycanvas.width / 2, 187);
+            }
+            car_img.src = 'car.png';
+        }
+
+        let submit = document.getElementById('submit');
+        let giveKeysBlock = document.querySelector('.give-keys');
+        let parkButton = document.querySelector('.give-keys button');
+
+        // При нажатии на кнопку "Готово" в форме
+        submit.onclick = function () {
+            if (arrNumbers.includes(document.getElementById('car-number').value)) {
+                alert('Машина с данным номером уже была добавлена!');
+            } else {
+                let number = document.getElementById('car-number').value;
+                drawCarNumber(number);
+                // Добавление номера в массив
+                arrNumbers.push(number);
+                // Отображение кнопки справа
+                giveKeysBlock.style.display = 'block';
+            }
+        }
+
+        // При нажатии на кнопку "Припарковать", автоматически припарковать машину в свободное место
+        parkButton.onclick = function () {
+            if (!alreadyOnParking(arrNumbers[arrNumbers.length - 1])) {
+                autoParkCar(arrNumbers[arrNumbers.length - 1]);
+            } else {
+                alert(`Машина с номером "${arrNumbers[arrNumbers.length - 1]}" уже припаркована!`);
+            }
+        }
+
+        let dragElement; // Для хранения перетаскиваемого элемента
+
+        // При захвате элемента <canvas> с рисунком машины
+        mycanvas.addEventListener('dragstart', function () {
+            dragElement = event.target;
+        });
+
+        // Указываем, что действие по умолчанию не должно выполняться
+        table.addEventListener('dragover', function () {
+            event.preventDefault();
+        });
+
+        // Обрабатываем событие завершения перетаскивания
+        table.addEventListener('drop', function () {
+            // Если наводится на элемент <th> 
+            if (event.target.nodeName == "TH") {
+                // Если машины были добавлены через форму
+                if (arrNumbers.length) {
+                    // Если данная машина уже припаркована на стоянке
+                    if (!alreadyOnParking(arrNumbers[arrNumbers.length - 1])) {
+                        // Если место еще не занято (т.е. без класса occupied), то машина занимает данное место на парковке
+                        if (!event.target.classList.contains('occupied')) park(event.target, arrNumbers[arrNumbers.length - 1]);
+                        else alert('Место занято!')
+
+                    } else {
+                        alert(`Машина с номером "${arrNumbers[arrNumbers.length - 1]}" уже припаркована!`);
+                    }
+                } else {
+                    alert('Машины не были добавлены через форму!');
+                }
+            }
+            // Место на парковке занимамет машина, с последним введенным в форме номером 
+        });
+
+        // Паркует машину (помещает в узел строку с номером)
+        function park(node, number) {
+            node.innerHTML = number;
+            node.className = 'occupied';
+        }
+
+        // Проверяет, припаркована ли уже машина с данным номером на парковке
+        function alreadyOnParking(number) {
+            // ряды парковки
+            let rows = document.querySelector('tbody').children;
+            for (i = 0; i < rows.length; i++) {
+                for (j = 0; j < rows[i].cells.length; j++) {
+                    if (rows[i].cells[j].innerHTML == number) return true;
+                }
+            }
+            return false;
+        }
+
+        // Паркует машину в первое свободное место на парковке 
+        function autoParkCar(number) {
+            let rows = document.querySelector('tbody').children;
+            for (i = 0; i < rows.length; i++) {
+                for (j = 0; j < rows[i].cells.length; j++) {
+                    if (rows[i].cells[j].innerHTML == '') {
+                        park(rows[i].cells[j], number);
+                        return;
+                    }
+                }
+            }
+        }
+
+    </script>
+</body>
+
+</html>
